@@ -8,3 +8,5 @@ Elementary Cellular Automaton
 [Download Binary](https://github.com/Theverat/ElementaryCellularAutomaton/releases/tag/v1.0)
 
 You will need Qt Creator 2.7.0 or higher to compile the code.
+
+![image](https://cloud.githubusercontent.com/assets/1584761/2887632/db68a6d0-d4fd-11e3-8161-8bc087fbf4be.png)
