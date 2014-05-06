@@ -6,3 +6,5 @@ In mathematics and computability theory, an elementary cellular automaton is a o
 - [Wikipedia.org](http://en.wikipedia.org/wiki/Elementary_cellular_automaton)
 
 - [Download Binary](https://github.com/Theverat/ElementaryCellularAutomaton/releases/tag/v1.0)
+
+You will need Qt Creator 2.7.0 or higher to compile the code.
