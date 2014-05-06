@@ -20,13 +20,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    //hide progressbar (only shows up when needed, i.e. at calculations
-    ui->progressBar_drawProgress->hide();
-
     //connect gui elements with mainwindow slots
     connect(ui->pushButton_start, SIGNAL(clicked()), this, SLOT(start()));
-    connect(ui->pushButton_stop, SIGNAL(clicked()), this, SLOT(stop()));
-    connect(ui->pushButton_reset, SIGNAL(clicked()), this, SLOT(reset()));
 
     connect(ui->checkBox_randEnabled, SIGNAL(clicked(bool)), this, SLOT(switchInitRandom(bool)));
     connect(ui->pushButton_randInit_generate, SIGNAL(clicked()), this, SLOT(generateRandInit()));
@@ -54,7 +49,6 @@ MainWindow::MainWindow(QWidget *parent) :
     background = QColor(70, 70, 70);
     //default button stylesheet
     buttonStylesheet = "border-radius: 5px; padding: 5px; ";
-
     //apply stylesheets
     ui->pushButton_colAlive->setStyleSheet(generateBgColorStylesheet(alive) + buttonStylesheet);
     ui->pushButton_colDead->setStyleSheet(generateBgColorStylesheet(dead) + buttonStylesheet);
@@ -70,7 +64,6 @@ MainWindow::MainWindow(QWidget *parent) :
     scene->setBackgroundBrush(QBrush(background));
 
     //setup automaton
-    stopDrawingProcess = false;
     this->randInit.reserve(1);
     setupAutomaton();
 }
@@ -87,11 +80,8 @@ void MainWindow::setupAutomaton() {
     this->automaton = new ECA();
 
     if(ui->checkBox_randEnabled->isChecked()) {
-        //generate random init line if none exists yet
-        //(user has not created one)
-        //if(randInit.size() == 1)
-            generateRandInit();
-
+        //generate random init line
+        generateRandInit();
         init = randInit;
     }
     else {
@@ -118,16 +108,13 @@ void MainWindow::setupAutomaton() {
 }
 
 void MainWindow::runAutomaton(ECA *automaton, uint numGenerations) {
-    ui->progressBar_drawProgress->show();
     ui->graphicsView->setBackgroundBrush(QBrush(background));
 
     automaton->computeNextGeneration((unsigned int)numGenerations);
     redrawState(automaton->getState(), ui->spinBox_pixelSize->value());
 
     if(ui->checkBox_autoScale->isChecked())
-        ui->graphicsView->fitInView(ui->graphicsView->sceneRect(), Qt::KeepAspectRatio);
-
-    ui->progressBar_drawProgress->hide();
+        ui->graphicsView->fitInView(ui->graphicsView->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 }
 
 //draw current state of the automaton into the graphicsview
@@ -166,51 +153,6 @@ void MainWindow::redrawState(std::vector< std::vector<bool> > state, uint pixelS
                 }
             } //end subpixel drawing
         }
-
-        /*
-        //method 2: via scanline
-        //not finished, is not better than setPixel performance- and memory-wise
-        QRgb *pxPointer = (QRgb*)image->scanLine(y);
-        for(int x = 0; x < state.at(0).size(); x++) {
-            if(state.at(y).at(x)) {
-                //cell is alive, use living cell color
-                // *pxPointer = qRgb(qRed(alive.red()), qGreen(alive.green()), qBlue(alive.blue()));
-                *pxPointer = qRgb(qRed(255), qGreen(255), qBlue(255));
-            }
-            else {
-                //cell is dead, use dead cell color
-                // *pxPointer = qRgb(qRed(alive.red()), qGreen(alive.green()), qBlue(alive.blue()));
-                *pxPointer = qRgb(qRed(0), qGreen(0), qBlue(0));
-            }
-
-            //increment pointer
-            pxPointer++;
-        }
-        */
-
-        /* DISABLED because of OpenMP
-        //invoke processEvents() (i.e. update the generations displayed)
-        //each 100 generations
-        if(y % 100 == 0) {
-            //update progressbar
-            //ui->progressBar_drawProgress->setValue((int)(100.0 / (double)state.size() * (double)y));
-            //update progressbar, OpenMP version:
-            emit updateProgressBar((int)(100.0 / (double)state.size() * (double)y));
-
-            //pass calculated QImage to graphicsview
-            //addImageToGraphicsView(imageBuffer);
-
-            QCoreApplication::processEvents();
-        }
-        */
-        /* DISABLED because of OpenMP
-        if(stopDrawingProcess) {
-            stopDrawingProcess = false;
-            //pass calculated QImage to graphicsview
-            addImageToGraphicsView(imageBuffer);
-            return;
-        }
-        */
     }
 
     //pass calculated QImage to graphicsview
@@ -230,21 +172,10 @@ void MainWindow::start() {
     runAutomaton(automaton, ui->spinBox_numGens->value());
 }
 
-//interrupt drawing process of the qgraphicsview
-//doesn't interrupt the calculation of generations!! Only the drawing of the scene!
-void MainWindow::stop() {
-    stopDrawingProcess = true;
-}
-
-//reset graphicsview
-void MainWindow::reset() {
-    ui->graphicsView->scene()->clear();
-}
-
 //set manual input to en-/disabled and random init buttons to opposite
 void MainWindow::switchInitRandom(bool randEnabled) {
-    ui->label_manualEnabled->setEnabled(!randEnabled);
-    ui->lineEdit_manualInit->setEnabled(!randEnabled);
+    ui->label_manualEnabled->setDisabled(randEnabled);
+    ui->lineEdit_manualInit->setDisabled(randEnabled);
     ui->spinBox_percentAlive->setEnabled(randEnabled);
     ui->spinBox_initRandLength->setEnabled(randEnabled);
     ui->pushButton_randInit_generate->setEnabled(randEnabled);
@@ -365,49 +296,13 @@ void MainWindow::saveImage() {
         return;
     }
 
-    QString filename = QFileDialog::getSaveFileName();
-    std::cout << "saving image to " << filename.toStdString() << std::endl;
+    QString filename = QFileDialog::getSaveFileName(this, "Save as", QDir::currentPath(),
+                                                    "Image Formats (*.png, *.jpg, *.jpeg, *.tiff, *.ppm, *.bmp, *.xpm");
 
-    if(!imageBuffer->save(filename)) {
+    QFileInfo file(filename);
+    if(!file.baseName().isEmpty() && file.suffix().isEmpty())
+        filename += ".png";
+
+    if(!imageBuffer->save(filename))
         QMessageBox::information(this, "Error while saving image", "Image not saved!");
-    }
 }
-
-/* OLD: using rectangles
-//update all pixels/generations
-void MainWindow::redrawState(std::vector< std::vector<bool> > state, uint pixelSize, uint lines) {
-    uint maxLines;
-    if(lines == 0)
-        maxLines = state.size();
-    else
-        maxLines = lines;
-
-    ui->graphicsView->scene()->clear();
-
-    for(unsigned int y = 0; y < maxLines; y++) {
-        for(unsigned int x = 0; x < state.at(0).size(); x++) {
-            QGraphicsRectItem* item = new QGraphicsRectItem(x*pixelSize, y*pixelSize, pixelSize, pixelSize);
-
-            //set color of cell (green for alive, dark red for dead)
-            if(state.at(y).at(x))
-                item->setBrush(QBrush(alive));
-            else
-                item->setBrush(QBrush(dead));
-
-            //add pixel to graphicsview scene
-            ui->graphicsView->scene()->addItem(item);
-        }
-        //invoke processEvents() (i.e. update the generations displayed)
-        //each 100 generations
-        if(y % 100 == 0) {
-            //update progressbar
-            ui->progressBar_drawProgress->setValue((int)(100.0 / (double)state.size() * (double)y));
-            QCoreApplication::processEvents();
-        }
-        if(stopDrawingProcess) {
-            stopDrawingProcess = false;
-            return;
-        }
-    }
-}
-*/

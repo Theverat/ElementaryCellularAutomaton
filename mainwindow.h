@@ -30,18 +30,15 @@ private:
     Ui::MainWindow *ui;
     ECA *automaton;
     std::vector<bool> randInit;
-    bool stopDrawingProcess;
+    QImage *imageBuffer;
+    bool imageWasGenerated;
     QColor alive;
     QColor dead;
     QColor background;
     QString buttonStylesheet;
-    QImage *imageBuffer;
-    bool imageWasGenerated;
 
 private slots:
     void start();
-    void stop();
-    void reset();
     void zoomIn();
     void zoomOut();
     void changeColorAlive();
@@ -52,9 +49,6 @@ private slots:
     void readBinaryRuleset(QString binary);
     void readDecimalRuleset(int decimal);
     void saveImage();
-
-signals:
-    void updateProgressBar(int value);
 };
 
 #endif // MAINWINDOW_H
