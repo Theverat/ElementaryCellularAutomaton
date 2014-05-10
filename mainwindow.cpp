@@ -88,20 +88,14 @@ void MainWindow::setupAutomaton() {
         //read manual init line
         QString initString = ui->lineEdit_manualInit->text();
         for(int i = 0; i < initString.length(); i++) {
-            if(initString.at(i) == '0')
-                init.push_back(false);
-            else
-                init.push_back(true);
+            init.push_back(initString.at(i) == '1');
         }
     }
 
     //parse rules
     QString ruleString = ui->lineEdit_ruleset->text();
     for(int i = 0; i < 8; i++) {
-        if(ruleString.at(i) == '0')
-            rules.push_back(false);
-        else
-            rules.push_back(true);
+        rules.push_back(ruleString.at(i) == '1');
     }
 
     this->automaton = new ECA(init, rules);
@@ -125,6 +119,14 @@ void MainWindow::redrawState(std::vector< std::vector<bool> > state, uint pixelS
     int imgSizeX = state.at(0).size() * pixelSize;
     int imgSizeY = state.size() * pixelSize;
     imageBuffer = new QImage(imgSizeX, imgSizeY, QImage::Format_RGB32);
+    //check if image was generated correctly and inform user if it was not
+    // (e.g. because of width or height too large for QImage)
+    if(imageBuffer->isNull()) {
+        QMessageBox::information(this, "Can not display image!", "Can not display image!\n"
+                                 "Most likely this is caused by a height or width larger than 37000 pixels.\n"
+                                 "Try reducing the number of generations or the length of the initial line.");
+        return;
+    }
 
     uint maxLines;
     if(lines == 0 || lines != state.size())
